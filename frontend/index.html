@@ -175,18 +175,6 @@
         .fraud-meter-fill.high { background: linear-gradient(90deg, #ef4444, #dc2626); }
         .fraud-meter-fill.medium { background: linear-gradient(90deg, #f59e0b, #d97706); }
         .fraud-meter-fill.low { background: linear-gradient(90deg, #10b981, #059669); }
-        .analysis-section {
-            margin: 12px 0;
-            padding: 12px;
-            background: #f8fafc;
-            border-radius: 12px;
-            font-size: 13px;
-        }
-        .red-flag {
-            color: #ef4444;
-            margin: 6px 0;
-            padding-left: 16px;
-        }
     </style>
 </head>
 <body>
@@ -196,7 +184,6 @@
     </header>
 
     <div class="container">
-        <!-- Главная страница -->
         <div id="homePage" class="page active">
             <div class="result-card">
                 <div style="font-size: 40px;">📱</div>
@@ -227,7 +214,6 @@
             </div>
         </div>
 
-        <!-- Страница жалоб -->
         <div id="reportPage" class="page">
             <div class="card">
                 <h3>⚠️ Сообщить о мошеннике</h3>
@@ -246,7 +232,7 @@
     </div>
 
     <script>
-        const API_BASE = 'http://localhost:5000';
+        const API_BASE = 'https://safecall-backend.onrender.com';
         
         let mediaRecorder = null;
         let audioChunks = [];
@@ -260,7 +246,6 @@
             setTimeout(() => toast.remove(), 2500);
         }
         
-        // Проверка номера
         async function checkPhoneNumber(phone) {
             if (!phone || phone.length < 10) return null;
             try {
@@ -319,7 +304,6 @@
             checkResult.style.display = 'block';
         }
         
-        // Запись и анализ
         async function startRecording() {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -383,39 +367,40 @@
                 
                 if (data.success) {
                     document.getElementById('liveTranscript').innerHTML = `"${(data.transcript || '').substring(0, 300)}"`;
-                    
                     const fraud = data.fraud_analysis || {};
-                    const level = fraud.level || fraud.fraud_level || '🟢 НИЗКАЯ ВЕРОЯТНОСТЬ';
+                    const level = fraud.level || '🟢 НИЗКАЯ ВЕРОЯТНОСТЬ';
                     document.getElementById('liveFraudProb').innerHTML = level;
-                    
                     const probability = fraud.probability || 0;
                     const meterFill = document.getElementById('fraudMeterFill');
                     meterFill.style.width = `${probability * 100}%`;
-                    
                     let meterClass = 'low';
                     if (probability > 0.7) meterClass = 'high';
                     else if (probability > 0.3) meterClass = 'medium';
                     meterFill.className = `fraud-meter-fill ${meterClass}`;
-                    
                     document.getElementById('fraudMeter').style.display = 'block';
-                    document.getElementById('fraudExplanation').innerHTML = `
-                        <strong>📊 Пояснение:</strong> ${fraud.explanation || 'Анализ выполнен'}
-                        ${fraud.red_flags && fraud.red_flags.length > 0 ? `<br><strong>🚩 Красные флаги:</strong><br>${fraud.red_flags.map(f => `• ${f}`).join('<br>')}` : ''}
-                    `;
-                    
+                    document.getElementById('fraudExplanation').innerHTML = `<strong>📊 Пояснение:</strong> ${fraud.explanation || 'Анализ выполнен'}`;
                     showToast('✅ Анализ завершён');
                 } else {
-                    document.getElementById('liveTranscript').innerHTML = `❌ ${data.error || 'Ошибка анализа'}`;
-                    showToast('❌ Ошибка анализа');
+                    document.getElementById('liveTranscript').innerHTML = '❌ Демо-режим: проверьте подключение к серверу';
+                    document.getElementById('liveFraudProb').innerHTML = '🟠 СРЕДНЯЯ ВЕРОЯТНОСТЬ';
+                    document.getElementById('fraudMeter').style.display = 'block';
+                    document.getElementById('fraudMeterFill').style.width = '50%';
+                    document.getElementById('fraudMeterFill').className = 'fraud-meter-fill medium';
+                    document.getElementById('fraudExplanation').innerHTML = '📊 Пояснение: Демо-режим (сервер недоступен)';
+                    showToast('⚠️ Демо-режим');
                 }
             } catch(err) {
                 console.error(err);
-                document.getElementById('liveTranscript').innerHTML = '❌ Ошибка соединения с сервером';
-                showToast('❌ Ошибка соединения');
+                document.getElementById('liveTranscript').innerHTML = '❌ Демо-режим: сервер недоступен';
+                document.getElementById('liveFraudProb').innerHTML = '🟠 СРЕДНЯЯ ВЕРОЯТНОСТЬ';
+                document.getElementById('fraudMeter').style.display = 'block';
+                document.getElementById('fraudMeterFill').style.width = '50%';
+                document.getElementById('fraudMeterFill').className = 'fraud-meter-fill medium';
+                document.getElementById('fraudExplanation').innerHTML = '📊 Пояснение: Демо-режим (проверьте интернет)';
+                showToast('⚠️ Демо-режим');
             }
         }
         
-        // Жалоба
         document.getElementById('reportBtn').addEventListener('click', async () => {
             const phone = document.getElementById('reportPhone').value;
             const city = document.getElementById('reportCity').value;
@@ -453,7 +438,6 @@
             }
         });
         
-        // Навигация
         function navigateTo(page) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             document.getElementById(`${page}Page`).classList.add('active');
