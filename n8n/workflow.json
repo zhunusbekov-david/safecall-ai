@@ -1,0 +1,29 @@
+{
+  "name": "SafeCall AI Fraud Detection",
+  "nodes": [
+    {
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhookTrigger",
+      "position": [250, 300],
+      "webhookId": "safecall-webhook"
+    },
+    {
+      "name": "Check Database",
+      "type": "n8n-nodes-base.supabase",
+      "position": [450, 300],
+      "parameters": {
+        "operation": "select",
+        "tableId": "fraud_reports"
+      }
+    },
+    {
+      "name": "Send Notification",
+      "type": "n8n-nodes-base.telegram",
+      "position": [650, 300],
+      "parameters": {
+        "chatId": "ADMIN_CHAT_ID",
+        "text": "Новая жалоба на номер {{$node[\"Webhook Trigger\"].json[\"phone\"]}}"
+      }
+    }
+  ]
+}

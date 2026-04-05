@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>SafeCall AI - Антимошенник</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding-bottom: 70px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 16px;
+        }
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .result-card {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            text-align: center;
+            padding: 24px;
+            border-radius: 20px;
+            margin-bottom: 16px;
+        }
+        .phone-number {
+            font-size: 28px;
+            font-weight: bold;
+            margin: 12px 0;
+            font-family: monospace;
+        }
+        .risk-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin: 12px 0;
+        }
+        .risk-high { background: #ef4444; color: white; }
+        .risk-medium { background: #f59e0b; color: white; }
+        .risk-low { background: #10b981; color: white; }
+        .risk-unknown { background: #6b7280; color: white; }
+        .recording-btn.recording {
+            animation: pulse 1.5s infinite;
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .live-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background: #ef4444;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: blink 1s infinite;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        .result {
+            margin-top: 12px;
+            padding: 12px;
+            background: #f8fafc;
+            border-radius: 12px;
+            font-size: 14px;
+        }
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 16px;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            z-index: 100;
+        }
+        .nav-item {
+            text-align: center;
+            flex: 1;
+            padding: 6px;
+            color: #666;
+            text-decoration: none;
+            font-size: 11px;
+        }
+        .nav-item.active { color: #667eea; }
+        .nav-item span { font-size: 22px; display: block; margin-bottom: 2px; }
+        .page { display: none; }
+        .page.active { display: block; }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .toast-message {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.85);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-size: 13px;
+            z-index: 1000;
+            animation: fadeInOut 2.5s ease;
+            white-space: nowrap;
+        }
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translateX(-50%) translateY(20px); }
+            15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            85% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+        }
+        input, textarea {
+            width: 100%;
+            padding: 14px;
+            font-size: 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            margin: 8px 0;
+        }
+        button {
+            width: 100%;
+            padding: 14px;
+            font-size: 16px;
+            border-radius: 12px;
+            margin: 8px 0;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .fraud-meter {
+            width: 100%;
+            height: 20px;
+            background: #e2e8f0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 16px 0;
+        }
+        .fraud-meter-fill {
+            height: 100%;
+            width: 0%;
+            transition: width 0.5s;
+            border-radius: 10px;
+        }
+        .fraud-meter-fill.high { background: linear-gradient(90deg, #ef4444, #dc2626); }
+        .fraud-meter-fill.medium { background: linear-gradient(90deg, #f59e0b, #d97706); }
+        .fraud-meter-fill.low { background: linear-gradient(90deg, #10b981, #059669); }
+        .analysis-section {
+            margin: 12px 0;
+            padding: 12px;
+            background: #f8fafc;
+            border-radius: 12px;
+            font-size: 13px;
+        }
+        .red-flag {
+            color: #ef4444;
+            margin: 6px 0;
+            padding-left: 16px;
+        }
+    </style>
+</head>
+<body>
+    <header style="background: linear-gradient(135deg, #1e293b, #0f172a); color: white; text-align: center; padding: 20px;">
+        <h1>📞 SafeCall AI</h1>
+        <p>Защита от телефонных мошенников</p>
+    </header>
+
+    <div class="container">
+        <!-- Главная страница -->
+        <div id="homePage" class="page active">
+            <div class="result-card">
+                <div style="font-size: 40px;">📱</div>
+                <div class="phone-number" id="displayNumber">-</div>
+                <div id="riskDisplay"><div class="risk-badge risk-unknown">⚪ Введите номер</div></div>
+                <div id="callAdvice" style="font-size: 12px;">Введите номер для проверки</div>
+            </div>
+
+            <div class="card">
+                <h3>📞 Проверка номера</h3>
+                <input type="tel" id="phoneInput" placeholder="Например: 77001234567">
+                <button id="checkBtn">🔍 Проверить номер</button>
+                <div id="checkResult" class="result" style="display: none;"></div>
+            </div>
+
+            <div class="card">
+                <h3>🎙️ Анализ разговора</h3>
+                <button id="recordBtn">🎤 Начать запись</button>
+                <div id="recordingStatus" style="margin: 8px 0; font-size: 14px;"></div>
+                <div id="liveResult" class="result" style="display: none;">
+                    <div><strong>📝 Транскрипция:</strong> <span id="liveTranscript">-</span></div>
+                    <div><strong>⚠️ Анализ:</strong> <span id="liveFraudProb">-</span></div>
+                    <div class="fraud-meter" id="fraudMeter" style="display: none;">
+                        <div class="fraud-meter-fill" id="fraudMeterFill"></div>
+                    </div>
+                    <div id="fraudExplanation" style="margin-top: 8px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Страница жалоб -->
+        <div id="reportPage" class="page">
+            <div class="card">
+                <h3>⚠️ Сообщить о мошеннике</h3>
+                <input type="tel" id="reportPhone" placeholder="Номер мошенника">
+                <input type="text" id="reportCity" placeholder="Город">
+                <textarea id="reportText" rows="3" placeholder="Опишите схему мошенничества..."></textarea>
+                <button id="reportBtn">📢 Отправить жалобу</button>
+                <div id="reportResult" class="result" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="bottom-nav">
+        <a href="#" class="nav-item active" data-page="home"><span>📞</span><div>Главная</div></a>
+        <a href="#" class="nav-item" data-page="report"><span>⚠️</span><div>Жалоба</div></a>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:5000';
+        
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let isRecording = false;
+        
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.className = 'toast-message';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2500);
+        }
+        
+        // Проверка номера
+        async function checkPhoneNumber(phone) {
+            if (!phone || phone.length < 10) return null;
+            try {
+                const response = await fetch(`${API_BASE}/check_number`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone: phone.replace(/[^0-9]/g, '') })
+                });
+                const data = await response.json();
+                if (!data.error) return data;
+            } catch (e) {
+                console.error(e);
+                showToast('❌ Ошибка соединения');
+            }
+            return null;
+        }
+        
+        function updateUIAfterCheck(phone, result) {
+            const displayNumber = document.getElementById('displayNumber');
+            const riskDisplay = document.getElementById('riskDisplay');
+            const adviceDiv = document.getElementById('callAdvice');
+            const checkResult = document.getElementById('checkResult');
+            
+            displayNumber.textContent = phone;
+            
+            if (result) {
+                let riskClass = 'risk-low';
+                let riskText = '🟢 Безопасный';
+                let advice = '✅ Номер безопасный';
+                
+                if (result.status && result.status.includes('МОШЕННИК')) {
+                    riskClass = 'risk-high';
+                    riskText = '🔴 МОШЕННИК!';
+                    advice = '⚠️ ВНИМАНИЕ! Номер мошенника!';
+                    showToast('🔴 ВНИМАНИЕ! Мошенник!');
+                } else if (result.status && result.status.includes('ВЫСОКИЙ РИСК')) {
+                    riskClass = 'risk-medium';
+                    riskText = '🟠 Высокий риск';
+                    advice = '⚠️ Будьте осторожны';
+                    showToast('🟠 Высокий риск мошенничества');
+                } else {
+                    showToast('🟢 Номер безопасный');
+                }
+                
+                riskDisplay.innerHTML = `<div class="risk-badge ${riskClass}">${riskText} (${Math.round((result.risk_score || 0) * 100)}% риск)</div>`;
+                adviceDiv.innerHTML = advice;
+                checkResult.innerHTML = `
+                    <div><strong>📞 Номер:</strong> ${phone}</div>
+                    <div>📊 Риск: ${Math.round((result.risk_score || 0) * 100)}%</div>
+                    <div>📞 Жалоб: ${result.reports_count || 0}</div>
+                `;
+            } else {
+                riskDisplay.innerHTML = '<div class="risk-badge risk-unknown">❌ Ошибка</div>';
+                checkResult.innerHTML = '❌ Ошибка проверки';
+            }
+            checkResult.style.display = 'block';
+        }
+        
+        // Запись и анализ
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+                
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    await analyzeAudio(audioBlob);
+                    stream.getTracks().forEach(track => track.stop());
+                };
+                
+                mediaRecorder.start();
+                isRecording = true;
+                const recordBtn = document.getElementById('recordBtn');
+                recordBtn.textContent = '⏹️ Остановить запись';
+                recordBtn.classList.add('recording');
+                document.getElementById('recordingStatus').innerHTML = '<span class="live-indicator"></span> 🔴 Запись...';
+                document.getElementById('liveResult').style.display = 'block';
+                showToast('🔴 Запись начата');
+                
+                setTimeout(() => {
+                    if (isRecording) stopRecording();
+                }, 30000);
+            } catch(err) {
+                console.error(err);
+                showToast('❌ Нет доступа к микрофону');
+            }
+        }
+        
+        function stopRecording() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+                const recordBtn = document.getElementById('recordBtn');
+                recordBtn.textContent = '🎤 Начать запись';
+                recordBtn.classList.remove('recording');
+                document.getElementById('recordingStatus').innerHTML = '';
+                showToast('⏹️ Запись остановлена');
+            }
+        }
+        
+        async function analyzeAudio(audioBlob) {
+            const formData = new FormData();
+            formData.append('audio', audioBlob);
+            
+            document.getElementById('liveTranscript').innerHTML = '<div class="loading"></div> Распознавание...';
+            document.getElementById('liveFraudProb').textContent = 'Анализ...';
+            document.getElementById('fraudMeter').style.display = 'none';
+            
+            try {
+                const response = await fetch(`${API_BASE}/analyze_audio`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('liveTranscript').innerHTML = `"${(data.transcript || '').substring(0, 300)}"`;
+                    
+                    const fraud = data.fraud_analysis || {};
+                    const level = fraud.level || fraud.fraud_level || '🟢 НИЗКАЯ ВЕРОЯТНОСТЬ';
+                    document.getElementById('liveFraudProb').innerHTML = level;
+                    
+                    const probability = fraud.probability || 0;
+                    const meterFill = document.getElementById('fraudMeterFill');
+                    meterFill.style.width = `${probability * 100}%`;
+                    
+                    let meterClass = 'low';
+                    if (probability > 0.7) meterClass = 'high';
+                    else if (probability > 0.3) meterClass = 'medium';
+                    meterFill.className = `fraud-meter-fill ${meterClass}`;
+                    
+                    document.getElementById('fraudMeter').style.display = 'block';
+                    document.getElementById('fraudExplanation').innerHTML = `
+                        <strong>📊 Пояснение:</strong> ${fraud.explanation || 'Анализ выполнен'}
+                        ${fraud.red_flags && fraud.red_flags.length > 0 ? `<br><strong>🚩 Красные флаги:</strong><br>${fraud.red_flags.map(f => `• ${f}`).join('<br>')}` : ''}
+                    `;
+                    
+                    showToast('✅ Анализ завершён');
+                } else {
+                    document.getElementById('liveTranscript').innerHTML = `❌ ${data.error || 'Ошибка анализа'}`;
+                    showToast('❌ Ошибка анализа');
+                }
+            } catch(err) {
+                console.error(err);
+                document.getElementById('liveTranscript').innerHTML = '❌ Ошибка соединения с сервером';
+                showToast('❌ Ошибка соединения');
+            }
+        }
+        
+        // Жалоба
+        document.getElementById('reportBtn').addEventListener('click', async () => {
+            const phone = document.getElementById('reportPhone').value;
+            const city = document.getElementById('reportCity').value;
+            const text = document.getElementById('reportText').value;
+            const resDiv = document.getElementById('reportResult');
+            
+            if (!phone || !city || !text) {
+                resDiv.innerHTML = '❌ Заполните все поля';
+                resDiv.style.display = 'block';
+                return;
+            }
+            
+            resDiv.style.display = 'block';
+            resDiv.innerHTML = '<div class="loading"></div> Отправка...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/report_scam`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone, city, text })
+                });
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    resDiv.innerHTML = '✅ Жалоба отправлена! Спасибо!';
+                    document.getElementById('reportPhone').value = '';
+                    document.getElementById('reportCity').value = '';
+                    document.getElementById('reportText').value = '';
+                    showToast('✅ Жалоба отправлена');
+                } else {
+                    resDiv.innerHTML = `❌ ${data.error || 'Ошибка'}`;
+                }
+            } catch(e) {
+                resDiv.innerHTML = '❌ Ошибка отправки';
+            }
+        });
+        
+        // Навигация
+        function navigateTo(page) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(`${page}Page`).classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            document.querySelector(`.nav-item[data-page="${page}"]`).classList.add('active');
+        }
+        
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                navigateTo(item.dataset.page);
+            });
+        });
+        
+        document.getElementById('checkBtn').addEventListener('click', async () => {
+            const phone = document.getElementById('phoneInput').value;
+            const checkResult = document.getElementById('checkResult');
+            
+            if (!phone || phone.length < 10) {
+                checkResult.innerHTML = '❌ Введите корректный номер';
+                checkResult.style.display = 'block';
+                return;
+            }
+            
+            checkResult.innerHTML = '<div class="loading"></div> Проверка...';
+            checkResult.style.display = 'block';
+            
+            const result = await checkPhoneNumber(phone);
+            updateUIAfterCheck(phone, result);
+        });
+        
+        document.getElementById('recordBtn').addEventListener('click', () => {
+            if (isRecording) {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        });
+        
+        showToast('🟢 SafeCall AI готов');
+    </script>
+</body>
+</html>
