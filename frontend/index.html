@@ -232,6 +232,8 @@
     </div>
 
     <script>
+        // ===== НАСТРОЙКИ =====
+        // ПРЯМАЯ ССЫЛКА НА БЭКЕНД
         const API_BASE = 'https://safecall-backend.onrender.com';
         
         let mediaRecorder = null;
@@ -246,19 +248,21 @@
             setTimeout(() => toast.remove(), 2500);
         }
         
+        // ===== ПРОВЕРКА НОМЕРА =====
         async function checkPhoneNumber(phone) {
             if (!phone || phone.length < 10) return null;
             try {
+                const cleanPhone = phone.replace(/[^0-9]/g, '');
                 const response = await fetch(`${API_BASE}/check_number`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phone: phone.replace(/[^0-9]/g, '') })
+                    body: JSON.stringify({ phone: cleanPhone })
                 });
                 const data = await response.json();
                 if (!data.error) return data;
             } catch (e) {
-                console.error(e);
-                showToast('❌ Ошибка соединения');
+                console.error('Check error:', e);
+                showToast('❌ Ошибка соединения с сервером');
             }
             return null;
         }
@@ -299,11 +303,12 @@
                 `;
             } else {
                 riskDisplay.innerHTML = '<div class="risk-badge risk-unknown">❌ Ошибка</div>';
-                checkResult.innerHTML = '❌ Ошибка проверки';
+                checkResult.innerHTML = '❌ Ошибка проверки. Проверьте соединение.';
             }
             checkResult.style.display = 'block';
         }
         
+        // ===== ЗАПИСЬ И АНАЛИЗ =====
         async function startRecording() {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -381,26 +386,19 @@
                     document.getElementById('fraudExplanation').innerHTML = `<strong>📊 Пояснение:</strong> ${fraud.explanation || 'Анализ выполнен'}`;
                     showToast('✅ Анализ завершён');
                 } else {
-                    document.getElementById('liveTranscript').innerHTML = '❌ Демо-режим: проверьте подключение к серверу';
-                    document.getElementById('liveFraudProb').innerHTML = '🟠 СРЕДНЯЯ ВЕРОЯТНОСТЬ';
-                    document.getElementById('fraudMeter').style.display = 'block';
-                    document.getElementById('fraudMeterFill').style.width = '50%';
-                    document.getElementById('fraudMeterFill').className = 'fraud-meter-fill medium';
-                    document.getElementById('fraudExplanation').innerHTML = '📊 Пояснение: Демо-режим (сервер недоступен)';
-                    showToast('⚠️ Демо-режим');
+                    document.getElementById('liveTranscript').innerHTML = '❌ Ошибка распознавания';
+                    document.getElementById('liveFraudProb').innerHTML = '🟠 НЕ УДАЛОСЬ РАСПОЗНАТЬ';
+                    showToast('❌ Ошибка анализа');
                 }
             } catch(err) {
                 console.error(err);
-                document.getElementById('liveTranscript').innerHTML = '❌ Демо-режим: сервер недоступен';
-                document.getElementById('liveFraudProb').innerHTML = '🟠 СРЕДНЯЯ ВЕРОЯТНОСТЬ';
-                document.getElementById('fraudMeter').style.display = 'block';
-                document.getElementById('fraudMeterFill').style.width = '50%';
-                document.getElementById('fraudMeterFill').className = 'fraud-meter-fill medium';
-                document.getElementById('fraudExplanation').innerHTML = '📊 Пояснение: Демо-режим (проверьте интернет)';
-                showToast('⚠️ Демо-режим');
+                document.getElementById('liveTranscript').innerHTML = '❌ Ошибка соединения с сервером';
+                document.getElementById('liveFraudProb').innerHTML = '⚠️ НЕТ СОЕДИНЕНИЯ';
+                showToast('❌ Ошибка соединения');
             }
         }
         
+        // ===== ОТПРАВКА ЖАЛОБЫ =====
         document.getElementById('reportBtn').addEventListener('click', async () => {
             const phone = document.getElementById('reportPhone').value;
             const city = document.getElementById('reportCity').value;
@@ -431,13 +429,16 @@
                     document.getElementById('reportText').value = '';
                     showToast('✅ Жалоба отправлена');
                 } else {
-                    resDiv.innerHTML = `❌ ${data.error || 'Ошибка'}`;
+                    resDiv.innerHTML = `❌ ${data.error || 'Ошибка отправки'}`;
                 }
             } catch(e) {
-                resDiv.innerHTML = '❌ Ошибка отправки';
+                console.error(e);
+                resDiv.innerHTML = '❌ Ошибка соединения с сервером';
+                showToast('❌ Ошибка соединения');
             }
         });
         
+        // ===== НАВИГАЦИЯ =====
         function navigateTo(page) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             document.getElementById(`${page}Page`).classList.add('active');
@@ -452,11 +453,12 @@
             });
         });
         
+        // ===== КНОПКИ =====
         document.getElementById('checkBtn').addEventListener('click', async () => {
             const phone = document.getElementById('phoneInput').value;
             const checkResult = document.getElementById('checkResult');
             
-            if (!phone || phone.length < 10) {
+            if (!phone || phone.length < 5) {
                 checkResult.innerHTML = '❌ Введите корректный номер';
                 checkResult.style.display = 'block';
                 return;
